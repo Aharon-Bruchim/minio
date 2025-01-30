@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-container
+    restart: no
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  minio:
+    image: minio/minio
+    container_name: minio-container
+    restart: no
+    environment:
+      MINIO_ROOT_USER: adminuser
+      MINIO_ROOT_PASSWORD: strongpassword123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+
+  back:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: back-container
+    restart: no
+    depends_on:
+      - mongodb
+      - minio
+    ports:
+      - "3000:3000"
+    environment:
+      # - MONGO_URI=mongodb://admin:adminpassword@mongodb:27017/fileDB?authSource=admin
+      - MONGO_URI=mongodb+srv://aharonyesodot:strongpassword123@clusterdb.d1wbu.mongodb.net/file?retryWrites=true&w=majority&appName=ClusterDB
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - ./back:/app  
+      - /app/node_modules  
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: front-container
+    restart: no
+    depends_on:
+      - back
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./front:/app  
+      - /app/node_modules  
+    command: npm run dev -- --host 0.0.0.0
+    
+
+
+volumes:
+  mongo_data:
+  minio_data:
+
